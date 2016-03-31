@@ -2,12 +2,8 @@
 
 //! Utilities for working with I/O streams.
 
-extern crate byteorder;
 extern crate uninitialized;
 extern crate resize_slice;
-
-/// An extension for `Read`ing an exact amount of data.
-pub mod read_exact;
 
 mod seek_forward;
 
@@ -20,7 +16,6 @@ pub use seek_forward::{
     SeekRewind, SeekForward, SeekBackward, SeekAbsolute, SeekEnd, Tell,
     ReadWriteTell, SeekForwardRead, SeekForwardWrite, SeekAbsoluteRewind, SeekAll
 };
-pub use read_exact::ReadExactExt;
 pub use buf_seeker::BufSeeker;
 pub use region::Region;
 pub use align::SeekAlignExt;
