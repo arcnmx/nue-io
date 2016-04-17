@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![feature(specialization)]
 
 //! Utilities for working with I/O streams.
 
@@ -14,7 +15,8 @@ mod take;
 
 pub use seek_forward::{
     SeekRewind, SeekForward, SeekBackward, SeekAbsolute, SeekEnd, Tell,
-    ReadWriteTell, SeekForwardRead, SeekForwardWrite, SeekAbsoluteRewind, SeekAll
+    ReadWriteTell, SeekForwardRead, SeekForwardWrite, SeekAbsoluteRewind,
+    IoRef
 };
 pub use buf_seeker::BufSeeker;
 pub use region::Region;

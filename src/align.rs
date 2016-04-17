@@ -24,10 +24,10 @@ impl<T: Tell + SeekForward> SeekAlignExt for T {
 #[test]
 fn align() {
     use std::io::Cursor;
-    use seek_forward::{SeekAll, SeekAbsolute};
+    use seek_forward::SeekAbsolute;
 
     let data = [0; 0x80];
-    let mut cursor = SeekAll::new(Cursor::new(&data[..]));
+    let mut cursor = Cursor::new(&data[..]);
 
     cursor.seek_absolute(0x25).unwrap();
 

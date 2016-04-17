@@ -149,7 +149,7 @@ impl<T: BufRead + Tell + SeekAbsolute> BufRead for Region<T> {
 mod tests {
     use std::io::{Cursor, Read};
     use super::Region;
-    use seek_forward::{SeekAll, SeekAbsolute};
+    use seek_forward::SeekAbsolute;
 
     fn data(count: usize) -> Vec<u8> {
         use std::iter::{repeat};
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn region() {
         let data = data(0x100);
-        let cursor = SeekAll::new(Cursor::new(data.clone()));
+        let cursor = Cursor::new(data.clone());
 
         let mut region = Region::new(cursor, 0x40, 0x80);
         let mut odata = vec![0u8; 0x40];

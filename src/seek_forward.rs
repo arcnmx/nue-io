@@ -1,4 +1,5 @@
 use std::io::{self, Read, Write, BufRead, Seek, SeekFrom, copy, sink, repeat};
+use std::ops::{Deref, DerefMut};
 
 /// A limited form of seeking that can only be reset from the beginning.
 ///
@@ -48,87 +49,100 @@ pub trait Tell {
     fn tell(&mut self) -> io::Result<u64>;
 }
 
-impl<'a, T: Tell + ?Sized> Tell for &'a mut T {
+/// Implements various IO traits for a reference type.
+pub struct IoRef<'a, T: ?Sized + 'a>(&'a mut T);
+
+impl<'a, T: ?Sized + 'a> IoRef<'a, T> {
+    /// Wrap a reference in an `IoRef`.
+    pub fn new(t: &'a mut T) -> Self {
+        IoRef(t)
+    }
+}
+
+impl<'a, T: ?Sized + 'a> Deref for IoRef<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a, T: ?Sized + 'a> DerefMut for IoRef<'a, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<'a, T: Tell + ?Sized + 'a> Tell for IoRef<'a, T> {
     #[inline]
     fn tell(&mut self) -> io::Result<u64> {
         (**self).tell()
     }
 }
 
-impl<'a, T: SeekForward + ?Sized> SeekForward for &'a mut T {
+impl<'a, T: SeekForward + ?Sized + 'a> SeekForward for IoRef<'a, T> {
     #[inline]
     fn seek_forward(&mut self, offset: u64) -> io::Result<u64> {
         (**self).seek_forward(offset)
     }
 }
 
-impl<'a, T: SeekAbsolute + ?Sized> SeekAbsolute for &'a mut T {
+impl<'a, T: SeekAbsolute + ?Sized + 'a> SeekAbsolute for IoRef<'a, T> {
     #[inline]
     fn seek_absolute(&mut self, pos: u64) -> io::Result<u64> {
         (**self).seek_absolute(pos)
     }
 }
 
-impl<'a, T: SeekRewind + ?Sized> SeekRewind for &'a mut T {
+impl<'a, T: SeekRewind + ?Sized + 'a> SeekRewind for IoRef<'a, T> {
     #[inline]
     fn seek_rewind(&mut self) -> io::Result<()> {
         (**self).seek_rewind()
     }
 }
 
-impl<'a, T: SeekBackward + ?Sized> SeekBackward for &'a mut T {
+impl<'a, T: SeekBackward + ?Sized + 'a> SeekBackward for IoRef<'a, T> {
     #[inline]
     fn seek_backward(&mut self, offset: u64) -> io::Result<u64> {
         (**self).seek_backward(offset)
     }
 }
 
-impl<'a, T: SeekEnd + ?Sized> SeekEnd for &'a mut T {
+impl<'a, T: SeekEnd + ?Sized + 'a> SeekEnd for IoRef<'a, T> {
     #[inline]
     fn seek_end(&mut self, offset: i64) -> io::Result<u64> {
         (**self).seek_end(offset)
     }
 }
 
-impl<T: Tell + ?Sized> Tell for Box<T> {
+impl<'a, T: Read + ?Sized + 'a> Read for IoRef<'a, T> {
     #[inline]
-    fn tell(&mut self) -> io::Result<u64> {
-        (**self).tell()
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
     }
 }
 
-impl<T: SeekForward + ?Sized> SeekForward for Box<T> {
+impl<'a, T: Write + ?Sized + 'a> Write for IoRef<'a, T> {
     #[inline]
-    fn seek_forward(&mut self, offset: u64) -> io::Result<u64> {
-        (**self).seek_forward(offset)
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (**self).write(buf)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        (**self).flush()
     }
 }
 
-impl<T: SeekAbsolute + ?Sized> SeekAbsolute for Box<T> {
+impl<'a, T: BufRead + ?Sized + 'a> BufRead for IoRef<'a, T> {
     #[inline]
-    fn seek_absolute(&mut self, pos: u64) -> io::Result<u64> {
-        (**self).seek_absolute(pos)
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        (**self).fill_buf()
     }
-}
 
-impl<T: SeekRewind + ?Sized> SeekRewind for Box<T> {
     #[inline]
-    fn seek_rewind(&mut self) -> io::Result<()> {
-        (**self).seek_rewind()
-    }
-}
-
-impl<T: SeekBackward + ?Sized> SeekBackward for Box<T> {
-    #[inline]
-    fn seek_backward(&mut self, offset: u64) -> io::Result<u64> {
-        (**self).seek_backward(offset)
-    }
-}
-
-impl<T: SeekEnd + ?Sized> SeekEnd for Box<T> {
-    #[inline]
-    fn seek_end(&mut self, offset: i64) -> io::Result<u64> {
-        (**self).seek_end(offset)
+    fn consume(&mut self, amt: usize) {
+        (**self).consume(amt)
     }
 }
 
@@ -144,11 +158,6 @@ pub struct SeekForwardWrite<T> {
 
 /// An absolute seeking wrapper around a `Tell + SeekForward + SeekRewind` type.
 pub struct SeekAbsoluteRewind<T> {
-    inner: T,
-}
-
-/// A wrapper that decomposes `Seek` into its individual traits.
-pub struct SeekAll<T> {
     inner: T,
 }
 
@@ -293,7 +302,7 @@ impl<T: SeekAbsolute> SeekAbsolute for ReadWriteTell<T> {
     }
 }*/
 
-/*impl<T: Tell + SeekAbsolute> SeekBackward for _<T> {
+/*impl<T: Tell + SeekAbsolute> SeekBackward for T {
     #[inline]
     fn seek_backward(&mut self, offset: u64) -> io::Result<u64> {
         let pos = try!(self.inner.tell()).saturating_sub(-offset as u64);
@@ -301,45 +310,45 @@ impl<T: SeekAbsolute> SeekAbsolute for ReadWriteTell<T> {
     }
 }*/
 
-impl<T: Seek> Tell for SeekAll<T> {
+impl<T: Seek> Tell for T {
     #[inline]
-    fn tell(&mut self) -> io::Result<u64> {
-        self.inner.seek(SeekFrom::Current(0))
+    default fn tell(&mut self) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(0))
     }
 }
 
-impl<T: Seek> SeekForward for SeekAll<T> {
+impl<T: Seek> SeekForward for T {
     #[inline]
-    fn seek_forward(&mut self, offset: u64) -> io::Result<u64> {
-        self.inner.seek(SeekFrom::Current(offset as i64)).map(|_| offset)
+    default fn seek_forward(&mut self, offset: u64) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(offset as i64)).map(|_| offset)
     }
 }
 
-impl<T: Seek> SeekAbsolute for SeekAll<T> {
+impl<T: Seek> SeekAbsolute for T {
     #[inline]
-    fn seek_absolute(&mut self, pos: u64) -> io::Result<u64> {
-        self.inner.seek(SeekFrom::Start(pos))
+    default fn seek_absolute(&mut self, pos: u64) -> io::Result<u64> {
+        self.seek(SeekFrom::Start(pos))
     }
 }
 
-impl<T: Seek> SeekRewind for SeekAll<T> {
+impl<T: Seek> SeekRewind for T {
     #[inline]
-    fn seek_rewind(&mut self) -> io::Result<()> {
-        self.inner.seek(SeekFrom::Start(0)).map(|_| ())
+    default fn seek_rewind(&mut self) -> io::Result<()> {
+        self.seek(SeekFrom::Start(0)).map(|_| ())
     }
 }
 
-impl<T: Seek> SeekBackward for SeekAll<T> {
+impl<T: Seek> SeekBackward for T {
     #[inline]
-    fn seek_backward(&mut self, offset: u64) -> io::Result<u64> {
-        self.inner.seek(SeekFrom::Current(-(offset as i64)))
+    default fn seek_backward(&mut self, offset: u64) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(-(offset as i64)))
     }
 }
 
-impl<T: Seek> SeekEnd for SeekAll<T> {
+impl<T: Seek> SeekEnd for T {
     #[inline]
-    fn seek_end(&mut self, offset: i64) -> io::Result<u64> {
-        self.inner.seek(SeekFrom::End(offset))
+    default fn seek_end(&mut self, offset: i64) -> io::Result<u64> {
+        self.seek(SeekFrom::End(offset))
     }
 }
 
@@ -426,35 +435,27 @@ macro_rules! impl_seek {
             }
         }
     };
+    ($t:ident => { $($tr:ident),* }) => {
+        $(
+            impl_seek!($t => $tr);
+        )*
+    };
 }
 
-impl_seek!(SeekForwardRead => SeekRewind);
-impl_seek!(SeekForwardRead => Tell);
-impl_seek!(SeekForwardRead => SeekAbsolute);
-impl_seek!(SeekForwardRead => SeekEnd);
-impl_seek!(SeekForwardRead => SeekBackward);
-impl_seek!(SeekForwardRead => BufRead);
-impl_seek!(SeekForwardRead => Read);
+impl_seek!(SeekForwardRead => {
+    Tell, SeekRewind, SeekAbsolute, SeekEnd, SeekBackward,
+    Write, Read, BufRead
+});
 
-impl_seek!(SeekForwardWrite => SeekRewind);
-impl_seek!(SeekForwardWrite => Tell);
-impl_seek!(SeekForwardWrite => SeekAbsolute);
-impl_seek!(SeekForwardWrite => SeekEnd);
-impl_seek!(SeekForwardWrite => SeekBackward);
-impl_seek!(SeekForwardWrite => Write);
+impl_seek!(SeekForwardWrite => {
+    Tell, SeekRewind, SeekAbsolute, SeekEnd, SeekBackward,
+    Write, Read, BufRead
+});
 
-impl_seek!(SeekAbsoluteRewind => SeekRewind);
-impl_seek!(SeekAbsoluteRewind => Tell);
-impl_seek!(SeekAbsoluteRewind => SeekForward);
-impl_seek!(SeekAbsoluteRewind => SeekEnd);
-impl_seek!(SeekAbsoluteRewind => SeekBackward);
-impl_seek!(SeekAbsoluteRewind => Read);
-impl_seek!(SeekAbsoluteRewind => Write);
-impl_seek!(SeekAbsoluteRewind => BufRead);
-
-impl_seek!(SeekAll => BufRead);
-impl_seek!(SeekAll => Read);
-impl_seek!(SeekAll => Write);
+impl_seek!(SeekAbsoluteRewind => {
+    Tell, SeekRewind, SeekForward, SeekEnd, SeekBackward,
+    Write, Read, BufRead
+});
 
 impl<T> SeekForwardRead<T> {
     /// Creates a new `SeekForwardRead`.
@@ -489,15 +490,6 @@ impl<T> ReadWriteTell<T> {
         ReadWriteTell {
             inner: inner,
             pos: 0,
-        }
-    }
-}
-
-impl<T> SeekAll<T> {
-    /// Creates a new `SeekAll`.
-    pub fn new(inner: T) -> Self {
-        SeekAll {
-            inner: inner,
         }
     }
 }
