@@ -149,7 +149,6 @@ impl<T: BufRead + Tell + SeekAbsolute> BufRead for Region<T> {
 mod tests {
     use std::io::{Cursor, Read};
     use super::Region;
-    use read_exact::ReadExactExt;
     use seek_forward::{SeekAll, SeekAbsolute};
 
     fn data(count: usize) -> Vec<u8> {
