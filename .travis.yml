@@ -1,0 +1,40 @@
+language: rust
+rust:
+- stable
+- beta
+- nightly
+sudo: false
+os:
+- linux
+cache:
+  directories:
+  - "$HOME/.cargo"
+  - target
+matrix:
+  fast_finish: true
+  allow_failures:
+  - rust: nightly
+env:
+  matrix:
+  - CARGO_FEATURES=
+  global:
+  - secure: h5r7Ezg2bT2BPmpsaqimrVeKSl7fB4aRfQz4LGoezKOhQBfbT4QcT8Qt76BJIAh9ZwH0aPdDzhttZKZPmT1sEL3AMYtWE5dqr+MZqCDCjCQYL9EKXYC+UKkTiVafa5CjqcWNu9FCzrZi6wj0HJRD/ImAUrE2mzermvYOKEFxkcgZznNOuwwNxLa7g5O5cFz7AhoUiaPOcWcSFU8nW0JCnTuJalNTuzygHR1LZgVm4R4TyDbwydsn36MYDuZ0+sFWXu+FKhlb4VyL00eab0un9vB1vNmblkdJnxQI/ZwREixnIEFu3XRB1G7bjbpJFLUAs0TlL+w+TQUDXzt0MM5dUPweErxUvTuxkiZH/zWTqnVlfQwbEAXeKa8xdvDA5d2LMmglomLH3PkJAIiAmPVwCgc7aTY2uoTxnfnugdGYGMKgyxmn+Kt/hh3QsJxRe3A7WxdGQAvoL/HreOTEzRwKg/3RYwag1Lw6YR+CKKqtC9QHn0QVhUg8UvgjOlUQEKIuQrX/Qs8TRd2cA7zKFkt/ZLAA8fjSUcbPNnpCr6YUrQURsRT23f2ftWN2Lb3X37SthNWodNLM1YMwOvb73X3FWlfs74haLX3EnRm0KNZ9NwWQBc+H56TrUTjf6jy6tnRHrKbkQVfeYaoSvKZGdzgLe/58TlZkWV7nNDWjKPXHxFI=
+  - secure: Qu5lqQlRHOpzoIGD3VpdtQW3qunPs1NwURu85h5nNFTIjU7lTQ6xqYna1ZCZCa3wBmmNe2pQutawCEP45juVZUE7RXX3tmZBoRnvVpcrDaphvIKtw3O0CxC7VRc3g3oryuAHqvRn7Cfqh/JxRsoLmzR5J1kSAgIipo9QgMBTuWV8F9qNfCHSA0PDjsSy6T0+NijJzHBI7LjTyEc6Zed/gfFQdu+BbvjPTON7gEXooEBqo8m9uw6shxsPutpI6LeNrDQNXUZcakGheAc2bm1HOIHiowbPR5lshN2s936hgbBQQZR3JbwfNHHV9Ufz+ycJopCmn7xpfRVuGvpzVfTzyYmSgOFzC+ZhWSap3saqnkcocp1aZSXAAB0K741Oeyh7HxowxbnwB3GvgxZ7ocNzF3e5t4SwCkl9Yv/dVXSTBL1Qmm0I2MlAkyXpvoDRWCkFdiCZ1fNUUF7MV909ik+P59eHrLik/fHDdMI+2wREGwwc8MNXvNHvpD5QHw6wWwjcwf2JTC8yxnzyoD4aqBH9j6LzZigF2I64/UJazOzVJSBYEIF5Nxf3bH0v9KcQEpyx0JQ00uk1/vR+AJuWbfbpc7UCNqQ0rmji5tXCpkabZLyM/59x6SQdpYE3iyadgH3a6tTDVsImqadV8msfD+9P+x0knF7sMmJT12QAM5CcAOw=
+before_install:
+- curl -L https://github.com/arcnmx/ci/archive/0.1.tar.gz | tar -xzC $HOME && . $HOME/ci-0.1/src
+script:
+- cargo test
+- cargo build
+deploy:
+  provider: script
+  script: 'true'
+  on:
+    tags: true
+    all_branches: true
+    condition: "$TRAVIS_RUST_VERSION = stable"
+before_deploy:
+- cargo doc
+- cargo package
+after_deploy:
+- cargo pages-publish
+- cargo publish
